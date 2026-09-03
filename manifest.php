@@ -41,11 +41,19 @@ return [
             'permission' => 'unit:view',
         ],
         [
+            'slug'       => 'jurisdictions',
+            'label'      => 'Jurisdictions',
+            'icon'       => '🗺️',
+            'api'        => '/api/v1/agencies/{id}/jurisdictions',
+            'position'   => 30,
+            'permission' => 'jurisdiction:view',
+        ],
+        [
             'slug'       => 'activity',
             'label'      => 'Activity',
             'icon'       => '🕐',
             'api'        => '/api/v1/agencies/{id}/activity-logs',
-            'position'   => 30,
+            'position'   => 40,
             'permission' => 'agency:view',
         ],
     ],
@@ -54,17 +62,18 @@ return [
         'permissions' => [
             'agency:view', 'agency:create', 'agency:edit', 'agency:delete',
             'unit:view',   'unit:create',   'unit:edit',   'unit:delete',
+            'jurisdiction:view', 'jurisdiction:create', 'jurisdiction:edit', 'jurisdiction:delete',
         ],
         'roles' => [
             ['name' => 'agency',              'label' => 'Agency',
              'permissions' => ['agency:view']],
             ['name' => 'agency-unit-admin',   'label' => 'Agency Unit Admin',
-             'permissions' => ['agency:view', 'unit:*']],
+             'permissions' => ['agency:view', 'unit:*', 'jurisdiction:*']],
             ['name' => 'agency-admin',        'label' => 'Agency Admin',
-             'permissions' => ['agency:*', 'unit:*']],
+             'permissions' => ['agency:*', 'unit:*', 'jurisdiction:*']],
         ],
         'grants' => [
-            'staff' => ['agency:view', 'unit:view'],
+            'staff' => ['agency:view', 'unit:view', 'jurisdiction:view'],
         ],
     ],
 ];

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
+use Modules\Agency\Models\AgencyJurisdiction;
 use Modules\Region\Models\Province;
 use Modules\Region\Models\Regency;
 use Spine\Traits\HasLifecycleHooks;
@@ -44,6 +45,11 @@ class Agency extends Model
     public function units(): HasMany
     {
         return $this->hasMany(Agency::class, 'parent_id')->where('type', 'unit');
+    }
+
+    public function jurisdictions(): HasMany
+    {
+        return $this->hasMany(AgencyJurisdiction::class, 'unit_id');
     }
 
     public function parent(): BelongsTo

@@ -7,8 +7,11 @@ namespace Modules\Agency\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Agency\Models\Agency;
+use Modules\Agency\Models\AgencyJurisdiction;
+use Modules\Region\Models\Regency;
 use Spine\Services\ActivityLogService;
 
 class AgencyController extends Controller
@@ -193,5 +196,123 @@ class AgencyController extends Controller
             ]);
 
         return response()->json(['data' => $logs]);
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // JURISDICTIONS (wilayah kerja unit)
+    // 1 regency = 1 unit (UNIQUE regency_id di tabel agency_jurisdictions).
+    // ────────────────────────────────────────────────────────────────────
+
+    /**
+     * Daftar wilayah kerja sebuah unit.
+     * Dengan ?available=1 → daftar kab/kota yang BELUM dipakai unit mana pun.
+     */
+    public function jurisdictions(int $id, Request $request): JsonResponse
+    {
+        $entity = Agency::find($id);
+
+        if (! $entity) {
+            return response()->json(['message' => 'Agency not found'], 404);
+        }
+
+        if ($request->boolean('available')) {
+            $taken = AgencyJurisdiction::pluck('regency_id');
+
+            return response()->json([
+                'data' => Regency::with('province:id,name')
+                    ->whereNotIn('id', $taken)
+                    ->orderBy('province_id')->orderBy('name')
+                    ->get(['id', 'name', 'province_id']),
+            ]);
+        }
+
+        return response()->json([
+            'data' => $entity->jurisdictions()
+                ->with('regency:id,name,province_id', 'regency.province:id,name')
+                ->orderBy('id')
+                ->get(),
+        ]);
+    }
+
+    /**
+     * Attach satu/lebih regency ke unit. Tolak yang sudah dipakai unit lain.
+     * Body: { regency_ids: int[] }
+     */
+    public function storeJurisdictions(int $id, Request $request): JsonResponse
+    {
+        $entity = Agency::find($id);
+
+        if (! $entity) {
+            return response()->json(['message' => 'Agency not found'], 404);
+        }
+        if ($entity->type !== 'unit') {
+            return response()->json(['message' => 'Jurisdiction hanya bisa dimiliki Unit.'], 422);
+        }
+
+        $validated = $request->validate([
+            'regency_ids'   => ['required', 'array', 'min:1'],
+            'regency_ids.*' => ['integer'],
+        ]);
+
+        $taken = AgencyJurisdiction::whereIn('regency_id', $validated['regency_ids'])->pluck('regency_id');
+        if ($taken->isNotEmpty()) {
+            return response()->json([
+                'message'     => 'Ada wilayah yang sudah menjadi jurisdiction unit lain.',
+                'regency_ids' => $taken->values(),
+            ], 422);
+        }
+
+        $rows = array_map(fn ($rid) => ['unit_id' => $entity->id, 'regency_id' => $rid, 'created_at' => now(), 'updated_at' => now()], $validated['regency_ids']);
+        AgencyJurisdiction::insert($rows);
+
+        return response()->json(['data' => AgencyJurisdiction::where('unit_id', $entity->id)->with('regency:id,name,province_id')->get()], 201);
+    }
+
+    /** Detach satu regency dari unit (wilayah kembali bebas). */
+    public function destroyJurisdiction(int $id, int $regencyId): JsonResponse
+    {
+        $entity = Agency::find($id);
+
+        if (! $entity) {
+            return response()->json(['message' => 'Agency not found'], 404);
+        }
+
+        $row = AgencyJurisdiction::where('unit_id', $entity->id)->where('regency_id', $regencyId)->first();
+        if (! $row) {
+            return response()->json(['message' => 'Wilayah bukan jurisdiction unit ini.'], 404);
+        }
+
+        $row->delete();
+
+        return response()->json(['message' => 'Jurisdiction removed']);
+    }
+
+    /**
+     * Pindahkan wilayah dari unit asal ke unit tujuan (atomik).
+     * Body: { regency_id, from_unit_id, to_unit_id }
+     */
+    public function moveJurisdiction(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'regency_id'   => ['required', 'integer'],
+            'from_unit_id' => ['required', 'integer'],
+            'to_unit_id'   => ['required', 'integer', 'different:from_unit_id'],
+        ]);
+
+        $row = AgencyJurisdiction::where('unit_id', $validated['from_unit_id'])
+            ->where('regency_id', $validated['regency_id'])
+            ->first();
+        if (! $row) {
+            return response()->json(['message' => 'Wilayah bukan jurisdiction unit asal.'], 422);
+        }
+
+        $target = Agency::find($validated['to_unit_id']);
+        if (! $target || $target->type !== 'unit') {
+            return response()->json(['message' => 'Unit tujuan tidak valid.'], 422);
+        }
+
+        $row->update(['unit_id' => $validated['to_unit_id']]);
+
+        return response()->json(['message' => 'Jurisdiction moved']);
     }
 }
