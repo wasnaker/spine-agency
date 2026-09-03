@@ -16,7 +16,7 @@ return [
 
     'widgets' => [
         [
-            'id'    => 'agencies-items',
+            'id'    => 'agencies',
             'area'  => 'right-4',
             'title' => 'Agencies',
             'api'   => '/api/v1/agencies',

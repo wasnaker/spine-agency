@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
+use Modules\Region\Models\Province;
+use Modules\Region\Models\Regency;
 use Spine\Traits\HasLifecycleHooks;
 
 class Agency extends Model
