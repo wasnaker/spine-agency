@@ -8,6 +8,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Modules\Agency\Models\Agency;
+use Modules\Agency\Models\AgencyJurisdiction;
 use Modules\Region\Models\Province;
 use Modules\Region\Models\Regency;
 
@@ -121,13 +122,33 @@ class AgencyDemoSeeder extends Seeder
                     'province_id'  => $provId,
                     'regency_id'   => $regencyByProvince[$provId] ?? null,
                 ]);
+
+                // Jurisdiction: 2-3 kab/kota dari provinsi yang sama, belum dipakai unit lain.
+                $this->assignJurisdictions($unit, $provId);
             }
         }
 
         $this->command?->info(sprintf(
-            'Demo data siap: %d Disnaker, %d unit dalam agencies.',
+            'Demo data siap: %d Disnaker, %d unit, %d jurisdiction dalam agencies.',
             Agency::where('type', 'agency')->count(),
-            Agency::where('type', 'unit')->count()
+            Agency::where('type', 'unit')->count(),
+            AgencyJurisdiction::count()
         ));
+    }
+
+    /** Assign regency milik provinsi yang sama; skip yang sudah terpakai. */
+    private function assignJurisdictions(Agency $unit, int $provId): void
+    {
+        $taken = AgencyJurisdiction::pluck('regency_id');
+
+        $candidates = Regency::where('province_id', $provId)
+            ->whereNotIn('id', $taken)
+            ->orderBy('id')
+            ->take(3)
+            ->pluck('id');
+
+        foreach ($candidates as $rid) {
+            $unit->jurisdictions()->firstOrCreate(['regency_id' => $rid]);
+        }
     }
 }
