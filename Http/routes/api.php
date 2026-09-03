@@ -28,6 +28,7 @@ Route::prefix('api/v1')->middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [AgencyController::class, 'destroy'])->whereNumber('id')->middleware('permission:agency:delete');
         Route::get('/{id}/activity-logs', [AgencyController::class, 'activityLogs'])->whereNumber('id')->middleware('permission:agency:view');
         Route::get('/{id}/units', [AgencyController::class, 'units'])->whereNumber('id')->middleware('permission:unit:view');
+        Route::get('/{id}/companies', [AgencyController::class, 'companies'])->whereNumber('id')->middleware('permission:agency:view');
 
         // Jurisdictions (wilayah kerja unit)
         Route::post('/jurisdictions/move', [AgencyController::class, 'moveJurisdiction'])->middleware('permission:jurisdiction:edit');

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Agency\Models\Agency;
 use Modules\Agency\Models\AgencyJurisdiction;
+use Modules\Customer\Models\Customer;
 use Modules\Region\Models\Regency;
 use Spine\Services\ActivityLogService;
 
@@ -173,6 +174,30 @@ class AgencyController extends Controller
         }
 
         return response()->json(['data' => $parent->units()->with(['parent:id,code,name', 'admin:id,name', 'province:id,name', 'regency:id,name'])->get()]);
+    }
+
+    public function companies(int $id): JsonResponse
+    {
+        $agency = Agency::find($id);
+
+        if (! $agency) {
+            return response()->json(['message' => 'Agency not found'], 404);
+        }
+
+        // Read-only cross-module lookup: no writes to the customers table.
+        $query = Customer::whereIn('type', ['customer', 'branch'])
+            ->with(['province:id,name', 'regency:id,name'])
+            ->orderBy('type')->orderBy('name');
+
+        if ($agency->type === 'unit' && $agency->regency_id) {
+            $query->where('regency_id', $agency->regency_id);
+        } elseif ($agency->province_id) {
+            $query->where('province_id', $agency->province_id);
+        } else {
+            return response()->json(['data' => []]);
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     public function activityLogs(int $id): JsonResponse

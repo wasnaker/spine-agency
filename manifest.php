@@ -41,6 +41,14 @@ return [
             'permission' => 'unit:view',
         ],
         [
+            'slug'       => 'companies',
+            'label'      => 'Companies',
+            'icon'       => '🏢',
+            'api'        => '/api/v1/agencies/{id}/companies',
+            'position'   => 25,
+            'permission' => 'agency:view',
+        ],
+        [
             'slug'       => 'jurisdictions',
             'label'      => 'Jurisdictions',
             'icon'       => '🗺️',
