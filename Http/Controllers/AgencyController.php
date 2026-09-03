@@ -189,9 +189,17 @@ class AgencyController extends Controller
             ->with(['province:id,name', 'regency:id,name'])
             ->orderBy('type')->orderBy('name');
 
-        if ($agency->type === 'unit' && $agency->regency_id) {
-            $query->where('regency_id', $agency->regency_id);
+        if ($agency->type === 'unit') {
+            // Unit: semua kab/kota yang menjadi jurisdiction unit ini.
+            $jurisdictions = AgencyJurisdiction::where('unit_id', $agency->id)->pluck('regency_id');
+
+            if ($jurisdictions->isEmpty()) {
+                return response()->json(['data' => []]);
+            }
+
+            $query->whereIn('regency_id', $jurisdictions);
         } elseif ($agency->province_id) {
+            // Disnaker (level provinsi): semua company di provinsi tsb.
             $query->where('province_id', $agency->province_id);
         } else {
             return response()->json(['data' => []]);
