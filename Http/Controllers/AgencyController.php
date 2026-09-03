@@ -219,18 +219,18 @@ class AgencyController extends Controller
             $taken = AgencyJurisdiction::pluck('regency_id');
 
             // Kab/kota yang bisa ditambah: satu provinsi dengan unit
-            // (provinsi unit sendiri, fallback provinsi Disnaker induknya).
-            $provinceId = $entity->province_id ?? $entity->parent?->province_id;
-            if (! $provinceId) {
-                return response()->json(['data' => []]);
+            // (provinsi unit -> provinsi Disnaker induk -> provinsi jurisdiction pertama).
+            $provinceId = $entity->province_id
+                ?? $entity->parent?->province_id
+                ?? $entity->jurisdictions()->with('regency:id,province_id')->first()?->regency?->province_id;
+
+            $query = Regency::with('province:id,name');
+            if ($provinceId) {
+                $query->where('province_id', $provinceId);
             }
 
             return response()->json([
-                'data' => Regency::with('province:id,name')
-                    ->where('province_id', $provinceId)
-                    ->whereNotIn('id', $taken)
-                    ->orderBy('name')
-                    ->get(['id', 'name', 'province_id']),
+                'data' => $query->whereNotIn('id', $taken)->orderBy('name')->get(['id', 'name', 'province_id']),
             ]);
         }
 
