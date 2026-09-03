@@ -1,0 +1,22 @@
+{
+    "name": "wasnaker/spine-agency",
+    "description": "Module Agency for laravelspine — Agency + Unit.",
+    "license": "MIT",
+    "type": "laravel-module",
+    "require": {
+        "php": "^8.3",
+        "nwidart/laravel-modules": "^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Agency\\": ""
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Modules\\Agency\\Providers\\AgencyServiceProvider"
+            ]
+        }
+    }
+}

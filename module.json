@@ -1,0 +1,12 @@
+{
+    "name": "Agency",
+    "alias": "agency",
+    "description": "Module Agency for laravelspine — Agency + Unit.",
+    "keywords": ["spine", "agency", "unit"],
+    "priority": 0,
+    "providers": [
+        "Modules\\Agency\\Providers\\AgencyServiceProvider"
+    ],
+    "files": [],
+    "requires": []
+}
