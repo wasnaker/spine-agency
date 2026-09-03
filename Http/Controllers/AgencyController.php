@@ -218,10 +218,18 @@ class AgencyController extends Controller
         if ($request->boolean('available')) {
             $taken = AgencyJurisdiction::pluck('regency_id');
 
+            // Kab/kota yang bisa ditambah: satu provinsi dengan unit
+            // (provinsi unit sendiri, fallback provinsi Disnaker induknya).
+            $provinceId = $entity->province_id ?? $entity->parent?->province_id;
+            if (! $provinceId) {
+                return response()->json(['data' => []]);
+            }
+
             return response()->json([
                 'data' => Regency::with('province:id,name')
+                    ->where('province_id', $provinceId)
                     ->whereNotIn('id', $taken)
-                    ->orderBy('province_id')->orderBy('name')
+                    ->orderBy('name')
                     ->get(['id', 'name', 'province_id']),
             ]);
         }
@@ -260,6 +268,19 @@ class AgencyController extends Controller
                 'message'     => 'Ada wilayah yang sudah menjadi jurisdiction unit lain.',
                 'regency_ids' => $taken->values(),
             ], 422);
+        }
+
+        // Wilayah harus satu provinsi dengan unit (fallback provinsi induk).
+        $provinceId = $entity->province_id ?? $entity->parent?->province_id;
+        if ($provinceId) {
+            $foreign = Regency::whereIn('id', $validated['regency_ids'])
+                ->where('province_id', '!=', $provinceId)
+                ->pluck('name');
+            if ($foreign->isNotEmpty()) {
+                return response()->json([
+                    'message' => 'Wilayah dari provinsi lain: '.$foreign->implode(', ').'. Wilayah kerja unit harus satu provinsi.',
+                ], 422);
+            }
         }
 
         $rows = array_map(fn ($rid) => ['unit_id' => $entity->id, 'regency_id' => $rid, 'created_at' => now(), 'updated_at' => now()], $validated['regency_ids']);
