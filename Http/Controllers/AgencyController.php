@@ -572,13 +572,43 @@ class AgencyController extends Controller
 
     /**
      * Opsi pengawas untuk form assign (role pengawas + pengawas-spesialis).
+     * Filter opsional ?customer_id=: hanya pengawas di unit yang
+     *   - provinsi sama dengan customer, DAN
+     *   - regency customer masuk jurisdiction unit tsb.
      */
-    public function pengawasOptions(): JsonResponse
+    public function pengawasOptions(Request $request): JsonResponse
     {
-        $users = User::role(['pengawas', 'pengawas-spesialis'])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+        $query = User::role(['pengawas', 'pengawas-spesialis'])
+            ->where('is_active', true);
+
+        $customerId = (int) $request->query('customer_id', 0);
+        if ($customerId) {
+            $customer = Customer::find($customerId);
+            if (! $customer || ! $customer->province_id || ! $customer->regency_id) {
+                return response()->json(['data' => []]);
+            }
+
+            $codes = Agency::where('type', 'unit')
+                ->where('province_id', $customer->province_id)
+                ->whereHas('jurisdictions', fn ($q) => $q->where('regency_id', $customer->regency_id))
+                ->pluck('code');
+
+            if ($codes->isEmpty()) {
+                return response()->json(['data' => []]);
+            }
+
+            // ponytail: user pengawas belum punya FK ke unit; linkage via konvensi
+            // email seeder (pengawas.{code}@ / pengawas-spesialis.{code}@).
+            // Upgrade ke relasi (pivot user_unit) saat ada form kelola pengawas.
+            $query->where(function ($q) use ($codes) {
+                foreach ($codes as $code) {
+                    $q->orWhere('email', 'like', "pengawas.{$code}@%")
+                        ->orWhere('email', 'like', "pengawas-spesialis.{$code}@%");
+                }
+            });
+        }
+
+        $users = $query->orderBy('name')->get(['id', 'name', 'email']);
 
         return response()->json(['data' => $users]);
     }
