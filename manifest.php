@@ -58,6 +58,14 @@ return [
             'permission' => 'agency:approve-surveyor-registration',
         ],
         [
+            'slug'       => 'staffs',
+            'label'      => 'Staff',
+            'icon'       => '👥',
+            'api'        => '/api/v1/agencies/{id}/staffs',
+            'position'   => 27,
+            'permission' => 'agency:view',
+        ],
+        [
             'slug'       => 'jurisdictions',
             'label'      => 'Jurisdictions',
             'icon'       => '🗺️',

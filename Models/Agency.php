@@ -62,6 +62,11 @@ class Agency extends Model
         return $this->belongsTo(User::class, 'admin_id');
     }
 
+    public function staffs(): HasMany
+    {
+        return $this->hasMany(AgencyStaff::class, 'agency_id');
+    }
+
     public function province(): BelongsTo
     {
         return $this->belongsTo(Province::class);

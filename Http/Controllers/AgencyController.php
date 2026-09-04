@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Agency\Models\Agency;
 use Modules\Agency\Models\AgencyJurisdiction;
+use Modules\Agency\Models\AgencyStaff;
 use Modules\Agency\Models\AgencySurveyorRegistration;
 use Modules\Customer\Models\Customer;
 use Modules\Region\Models\Regency;
@@ -186,7 +187,7 @@ class AgencyController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Agency::with(['parent:id,code,name', 'admin:id,name', 'province:id,name', 'regency:id,name']);
+        $query = Agency::with(['parent:id,code,name', 'admin:id,name', 'admin.agencyStaff:id,user_id,realname', 'province:id,name', 'regency:id,name']);
 
         // Caller surveyor (agency:surveyor-register tanpa agency:view): hanya
         // Disnaker (type=agency) yang tampil, plus status registrasinya.
@@ -297,7 +298,7 @@ class AgencyController extends Controller
             }
         }
 
-        $entity = Agency::with(['units.parent:id,code,name', 'units.admin:id,name', 'units.province:id,name', 'units.regency:id,name', 'parent:id,code,name', 'admin:id,name', 'province:id,name', 'regency:id,name'])->find($id);
+        $entity = Agency::with(['units.parent:id,code,name', 'units.admin:id,name', 'units.admin.agencyStaff:id,user_id,realname', 'units.province:id,name', 'units.regency:id,name', 'parent:id,code,name', 'admin:id,name', 'admin.agencyStaff:id,user_id,realname', 'province:id,name', 'regency:id,name'])->find($id);
 
         if (! $entity) {
             return response()->json(['message' => 'Agency not found'], 404);
@@ -373,7 +374,7 @@ class AgencyController extends Controller
             return response()->json(['message' => 'Agency not found'], 404);
         }
 
-        return response()->json(['data' => $parent->units()->with(['parent:id,code,name', 'admin:id,name', 'province:id,name', 'regency:id,name'])->get()]);
+        return response()->json(['data' => $parent->units()->with(['parent:id,code,name', 'admin:id,name', 'admin.agencyStaff:id,user_id,realname', 'province:id,name', 'regency:id,name'])->get()]);
     }
 
     public function companies(int $id): JsonResponse
@@ -403,6 +404,29 @@ class AgencyController extends Controller
             $query->where('province_id', $agency->province_id);
         } else {
             return response()->json(['data' => []]);
+        }
+
+        return response()->json(['data' => $query->get()]);
+    }
+
+    public function staffs(int $id): JsonResponse
+    {
+        $agency = Agency::find($id);
+
+        if (! $agency) {
+            return response()->json(['message' => 'Agency not found'], 404);
+        }
+
+        $query = AgencyStaff::query()
+            ->with(['unit:id,code,name', 'user:id,name,email'])
+            ->orderBy('jabatan')->orderBy('realname');
+
+        if ($agency->type === 'unit') {
+            // Unit: hanya staff unit tsb.
+            $query->where('unit_id', $agency->id);
+        } else {
+            // Disnaker HO: seluruh staff (HO + semua unit anak) — agency_id = HO utk semua.
+            $query->where('agency_id', $agency->id);
         }
 
         return response()->json(['data' => $query->get()]);
