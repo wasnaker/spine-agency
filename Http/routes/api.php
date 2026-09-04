@@ -38,6 +38,9 @@ Route::prefix('api/v1')->middleware('auth:sanctum')->group(function () {
 
         // Registrasi surveyor lintas dinas (1 baris per HO).
         Route::post('/{id}/surveyor-registration', [AgencyController::class, 'register'])->whereNumber('id')->middleware('permission:agency:surveyor-register');
+
+        // Opsi pengawas utk form assign (semua user role pengawas/pengawas-spesialis)
+        Route::get('/pengawas/options', [AgencyController::class, 'pengawasOptions'])->middleware('permission:pengawas:view');
         // Surveyor-registrasi: agency-admin lihat semua; surveyor (register lintas
         // dinas) lihat baris miliknya sendiri (difilter di controller).
         Route::get('/{id}/surveyor-registrations', [AgencyController::class, 'registrations'])->whereNumber('id')->middleware('permission:agency:approve-surveyor-registration|agency:surveyor-register');

@@ -16,6 +16,7 @@ use Modules\Customer\Models\Customer;
 use Modules\Region\Models\Regency;
 use Modules\Surveyor\Models\Surveyor;
 use Spine\Services\ActivityLogService;
+use App\Models\User;
 
 class AgencyController extends Controller
 {
@@ -567,5 +568,18 @@ class AgencyController extends Controller
         $row->update(['unit_id' => $validated['to_unit_id']]);
 
         return response()->json(['message' => 'Jurisdiction moved']);
+    }
+
+    /**
+     * Opsi pengawas untuk form assign (role pengawas + pengawas-spesialis).
+     */
+    public function pengawasOptions(): JsonResponse
+    {
+        $users = User::role(['pengawas', 'pengawas-spesialis'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return response()->json(['data' => $users]);
     }
 }
