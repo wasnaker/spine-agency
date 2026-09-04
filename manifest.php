@@ -50,6 +50,14 @@ return [
             'permission' => 'agency:view',
         ],
         [
+            'slug'       => 'registrations',
+            'label'      => 'Surveyor Regs',
+            'icon'       => '📝',
+            'api'        => '/api/v1/agencies/{id}/surveyor-registrations',
+            'position'   => 26,
+            'permission' => 'agency:approve-surveyor-registration',
+        ],
+        [
             'slug'       => 'jurisdictions',
             'label'      => 'Jurisdictions',
             'icon'       => '🗺️',
