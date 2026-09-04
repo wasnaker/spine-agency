@@ -11,17 +11,175 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Agency\Models\Agency;
 use Modules\Agency\Models\AgencyJurisdiction;
+use Modules\Agency\Models\AgencySurveyorRegistration;
 use Modules\Customer\Models\Customer;
 use Modules\Region\Models\Regency;
+use Modules\Surveyor\Models\Surveyor;
 use Spine\Services\ActivityLogService;
 
 class AgencyController extends Controller
 {
     public function __construct(private readonly ActivityLogService $activityLog) {}
 
+    /**
+     * Resolve entity surveyor user (HO di-resolve ke row induknya) — by admin_id.
+     */
+    private function surveyorHo(?int $userId): ?Surveyor
+    {
+        if (! $userId) {
+            return null;
+        }
+        $entity = Surveyor::where('admin_id', $userId)->first();
+
+        return $entity?->type === 'branch' ? Surveyor::find($entity->parent_id) : $entity;
+    }
+
+    /**
+     * Resolve entity agency user (row agency/unit miliknya, by admin_id).
+     */
+    private function agencyOf(?int $userId): ?Agency
+    {
+        if (! $userId) {
+            return null;
+        }
+
+        return Agency::where('admin_id', $userId)->first();
+    }
+
+    /**
+     * Registrasi surveyor (HO) ke agency ini — kerja lintas dinas.
+     * 1 baris per (agency, HO): cabang otomatis tercakup saat approved.
+     */
+    public function register(int $id, Request $request): JsonResponse
+    {
+        $agency = Agency::find($id);
+        if (! $agency) {
+            return response()->json(['message' => 'Agency not found'], 404);
+        }
+        if ($agency->type !== 'agency') {
+            return response()->json(['message' => 'Registrasi hanya ke Disnaker (agency).'], 422);
+        }
+        if (! $agency->is_active) {
+            return response()->json(['message' => 'Disnaker non-aktif tidak menerima registrasi.'], 422);
+        }
+
+        $ho = $this->surveyorHo($request->user()?->id);
+        if (! $ho) {
+            return response()->json(['message' => 'Akun tidak terikat ke entity surveyor.'], 403);
+        }
+
+        $reg = AgencySurveyorRegistration::where('agency_id', $agency->id)
+            ->where('surveyor_id', $ho->id)
+            ->first();
+
+        if ($reg && in_array($reg->status, ['pending', 'review'], true)) {
+            return response()->json(['message' => 'Registrasi sedang menunggu review.'], 409);
+        }
+        if ($reg && $reg->status === 'approved') {
+            return response()->json(['message' => 'Sudah terdaftar di Disnaker ini.'], 409);
+        }
+
+        if ($reg) { // rejected -> daftar ulang
+            $reg->update([
+                'status'       => 'pending',
+                'requested_by' => $request->user()->id,
+                'processed_by' => null,
+                'processed_at' => null,
+                'note'         => null,
+            ]);
+        } else {
+            $reg = AgencySurveyorRegistration::create([
+                'agency_id'    => $agency->id,
+                'surveyor_id'  => $ho->id,
+                'status'       => 'pending',
+                'requested_by' => $request->user()->id,
+            ]);
+        }
+
+        Log::info('[AgencySurveyor] registered', [
+            'agency_id' => $agency->id, 'surveyor_id' => $ho->id, 'by' => $request->user()->id,
+        ]);
+
+        return response()->json($reg->fresh(), 201);
+    }
+
+    /**
+     * Daftar registrasi surveyor utk agency ini (agency-admin).
+     */
+    public function registrations(int $id, Request $request): JsonResponse
+    {
+        $agency = Agency::find($id);
+        if (! $agency) {
+            return response()->json(['message' => 'Agency not found'], 404);
+        }
+
+        $rows = AgencySurveyorRegistration::with([
+            'surveyor:id,code,name,email,phone,address,is_active,type,parent_id,admin_id',
+            'surveyor.admin:id,name,email',
+            'surveyor.province:id,name', 'surveyor.regency:id,name',
+            'requestedBy:id,name', 'processedBy:id,name',
+        ])->where('agency_id', $agency->id)
+            ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'review' THEN 1 WHEN 'approved' THEN 2 ELSE 3 END")
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json(['data' => $rows]);
+    }
+
+    /**
+     * Decide registrasi: approved | rejected | review (agency-admin / platform).
+     */
+    public function decide(int $id, int $regId, Request $request): JsonResponse
+    {
+        $action = $request->validate([
+            'action' => ['required', 'string', 'in:approved,rejected,review'],
+            'note'   => ['nullable', 'string', 'max:1024'],
+        ])['action'];
+        $note = $request->string('note')->trim()->toString() ?: null;
+
+        $reg = AgencySurveyorRegistration::where('agency_id', $id)->find($regId);
+        if (! $reg) {
+            return response()->json(['message' => 'Registrasi tidak ditemukan.'], 404);
+        }
+
+        // Otorisasi dulu: hanya super-admin (role admin) ATAU admin agency PEMILIK row.
+        $isSuper = $request->user()->hasRole('admin');
+        $me = $this->agencyOf($request->user()?->id);
+        if (! $isSuper && (! $me || $me->id !== $id)) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        if (! in_array($reg->status, ['pending', 'review'], true)) {
+            return response()->json(['message' => 'Registrasi sudah diputus (' . $reg->status . ').'], 422);
+        }
+        if ($action === 'rejected' && ! $note) {
+            return response()->json(['message' => 'Alasan wajib diisi saat menolak.'], 422);
+        }
+
+        $reg->update([
+            'status'       => $action,
+            'processed_by' => $request->user()->id,
+            'processed_at' => now(),
+            'note'         => $note,
+        ]);
+
+        Log::info('[AgencySurveyor] decided', [
+            'reg_id' => $reg->id, 'agency_id' => $id, 'action' => $action, 'by' => $request->user()->id,
+        ]);
+
+        return response()->json($reg->fresh());
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = Agency::with(['parent:id,code,name', 'admin:id,name', 'province:id,name', 'regency:id,name']);
+
+        // Caller surveyor (agency:surveyor-register tanpa agency:view): hanya
+        // Disnaker (type=agency) yang tampil, plus status registrasinya.
+        $surveyorView = ! $request->user()->can('agency:view');
+        if ($surveyorView) {
+            $query->where('type', 'agency');
+        }
 
         if ($request->filled('q')) {
             $term = $request->string('q');
@@ -45,7 +203,22 @@ class AgencyController extends Controller
 
         $query->orderByRaw("CASE WHEN type = 'agency' THEN 0 ELSE 1 END")->orderByDesc('id');
 
-        return response()->json(['data' => $query->get()]);
+        $items = $query->get();
+
+        // Caller surveyor: lampirkan status registrasi HO-nya per Disnaker.
+        if ($surveyorView) {
+            $ho = $this->surveyorHo($request->user()?->id);
+            $statuses = $ho
+                ? AgencySurveyorRegistration::where('surveyor_id', $ho->id)
+                    ->whereIn('agency_id', $items->pluck('id'))
+                    ->pluck('status', 'agency_id')
+                : collect();
+            $items->each(function ($a) use ($statuses) {
+                $a->registration_status = $statuses[$a->id] ?? null;
+            });
+        }
+
+        return response()->json(['data' => $items]);
     }
 
     public function store(Request $request): JsonResponse
@@ -95,8 +268,21 @@ class AgencyController extends Controller
         return response()->json($entity, 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(int $id, Request $request): JsonResponse
     {
+        // Surveyor (tanpa agency:view): hanya bisa buka Disnaker yang
+        // registrasinya SUDAH approved (akses data saat terhubung).
+        if (! $request->user()->can('agency:view')) {
+            $ho = $this->surveyorHo($request->user()?->id);
+            $ok = $ho && AgencySurveyorRegistration::where('agency_id', $id)
+                ->where('surveyor_id', $ho->id)
+                ->where('status', 'approved')
+                ->exists();
+            if (! $ok) {
+                return response()->json(['message' => 'Agency not found'], 404);
+            }
+        }
+
         $entity = Agency::with(['units.parent:id,code,name', 'units.admin:id,name', 'units.province:id,name', 'units.regency:id,name', 'parent:id,code,name', 'admin:id,name', 'province:id,name', 'regency:id,name'])->find($id);
 
         if (! $entity) {

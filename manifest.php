@@ -10,7 +10,8 @@ return [
             'icon'       => '🏢',
             'href'       => '/agencies',
             'position'   => 40,
-            'permission' => 'agency:view',
+            // Platform/agency (agency:view) ATAU surveyor (register lintas dinas).
+            'permission' => 'agency:view|agency:surveyor-register',
         ],
     ],
 
@@ -71,6 +72,8 @@ return [
             'agency:view', 'agency:create', 'agency:edit', 'agency:delete',
             'unit:view',   'unit:create',   'unit:edit',   'unit:delete',
             'jurisdiction:view', 'jurisdiction:create', 'jurisdiction:edit', 'jurisdiction:delete',
+            'agency:approve-surveyor-registration',
+            'agency:surveyor-register',
         ],
         'roles' => [
             ['name' => 'agency',              'label' => 'Agency',
@@ -78,7 +81,8 @@ return [
             ['name' => 'agency-unit-admin',   'label' => 'Agency Unit Admin',
              'permissions' => ['agency:view', 'unit:*', 'jurisdiction:*']],
             ['name' => 'agency-admin',        'label' => 'Agency Admin',
-             'permissions' => ['agency:*', 'unit:*', 'jurisdiction:*']],
+             'permissions' => ['agency:*', 'unit:*', 'jurisdiction:*',
+                'agency:approve-surveyor-registration']],
         ],
         'grants' => [
             'staff' => ['agency:view', 'unit:view', 'jurisdiction:view'],

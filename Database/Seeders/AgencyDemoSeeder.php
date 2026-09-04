@@ -67,7 +67,7 @@ class AgencyDemoSeeder extends Seeder
             ->map(fn ($r) => $r->first()->id);
 
         $adminPass = 'adminpass';
-        $makeAdmin = function (string $code, string $name, int $salt) use ($adminPass): int {
+        $makeAdmin = function (string $code, string $name, int $salt, string $role): int {
             $email = strtolower("dg.{$code}.{$salt}@wasnaker.lan");
             $user = User::firstOrCreate(
                 ['email' => $email],
@@ -77,6 +77,9 @@ class AgencyDemoSeeder extends Seeder
                     'is_active' => true,
                 ]
             );
+            if (! $user->hasRole($role)) {
+                $user->assignRole($role);
+            }
 
             return $user->id;
         };
@@ -99,7 +102,7 @@ class AgencyDemoSeeder extends Seeder
                 ]
             );
             $agency->update([
-                'admin_id'     => $makeAdmin($a['code'], $agency->name, $i),
+                'admin_id'     => $makeAdmin($a['code'], $agency->name, $i, 'agency-admin'),
                 'province_id'  => $provId,
                 'regency_id'   => $regencyByProvince[$provId] ?? null,
             ]);
@@ -118,7 +121,7 @@ class AgencyDemoSeeder extends Seeder
                     ]
                 );
                 $unit->update([
-                    'admin_id'     => $makeAdmin($unitCode, $unit->name, $i + $uIdx),
+                    'admin_id'     => $makeAdmin($unitCode, $unit->name, $i + $uIdx, 'agency-unit-admin'),
                     'province_id'  => $provId,
                     'regency_id'   => $regencyByProvince[$provId] ?? null,
                 ]);
