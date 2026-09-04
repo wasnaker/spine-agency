@@ -632,7 +632,14 @@ class AgencyController extends Controller
             });
         }
 
-        $users = $query->orderBy('name')->get(['id', 'name', 'email']);
+        $users = $query->with('agencyStaff:id,user_id,realname')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->map(fn ($u) => [
+                'id'    => $u->id,
+                'name'  => $u->agencyStaff?->realname ?? $u->name,
+                'email' => $u->email,
+            ]);
 
         return response()->json(['data' => $users]);
     }
