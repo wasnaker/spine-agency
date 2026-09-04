@@ -104,7 +104,9 @@ class AgencyController extends Controller
     }
 
     /**
-     * Daftar registrasi surveyor utk agency ini (agency-admin).
+     * Daftar registrasi surveyor utk agency ini (agency-admin / surveyor).
+     * Agency-admin (pemilik) & platform lihat SEMUA baris; surveyor (register
+     * lintas dinas) hanya melihat baris milik HO-nya sendiri.
      */
     public function registrations(int $id, Request $request): JsonResponse
     {
@@ -113,12 +115,23 @@ class AgencyController extends Controller
             return response()->json(['message' => 'Agency not found'], 404);
         }
 
-        $rows = AgencySurveyorRegistration::with([
+        $query = AgencySurveyorRegistration::with([
             'surveyor:id,code,name,email,phone,address,is_active,type,parent_id,admin_id',
             'surveyor.admin:id,name,email',
             'surveyor.province:id,name', 'surveyor.regency:id,name',
             'requestedBy:id,name', 'processedBy:id,name',
-        ])->where('agency_id', $agency->id)
+        ])->where('agency_id', $agency->id);
+
+        // Caller surveyor (bukan approver): hanya baris registrasi milik HO-nya.
+        if (! $request->user()->can('agency:approve-surveyor-registration')) {
+            $ho = $this->surveyorHo($request->user()?->id);
+            if (! $ho) {
+                return response()->json(['message' => 'Akun tidak terikat ke entity surveyor.'], 403);
+            }
+            $query->where('surveyor_id', $ho->id);
+        }
+
+        $rows = $query
             ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'review' THEN 1 WHEN 'approved' THEN 2 ELSE 3 END")
             ->orderByDesc('id')
             ->get();

@@ -102,7 +102,7 @@ class AgencyDemoSeeder extends Seeder
                 ]
             );
             $agency->update([
-                'admin_id'     => $makeAdmin($a['code'], $agency->name, $i, 'agency-admin'),
+                'admin_id'     => $makeAdmin($a['code'], $agency->name, $i, 'admin-dinas'),
                 'province_id'  => $provId,
                 'regency_id'   => $regencyByProvince[$provId] ?? null,
             ]);
