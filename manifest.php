@@ -94,9 +94,11 @@ return [
              'permissions' => ['agency:*', 'unit:*', 'jurisdiction:*',
                 'agency:approve-surveyor-registration']],
             ['name' => 'pengawas',            'label' => 'Pengawas',
-             'permissions' => ['agency:view', 'lhp:view', 'lhp:create', 'lhp:edit', 'lhp:delete']],
+             'permissions' => ['agency:view', 'lhp:view', 'lhp:create', 'lhp:edit', 'lhp:delete',
+                'laporan-pjk3:review', 'laporan-pjk3:terima', 'laporan-pjk3:tolak']],
             ['name' => 'pengawas-spesialis',  'label' => 'Pengawas Spesialis',
-             'permissions' => ['agency:view', 'lhp:view', 'lhp:create', 'lhp:edit', 'lhp:delete', 'suket:tandatangan']],
+             'permissions' => ['agency:view', 'lhp:view', 'lhp:create', 'lhp:edit', 'lhp:delete', 'suket:tandatangan',
+                'laporan-pjk3:review', 'laporan-pjk3:terima', 'laporan-pjk3:tolak']],
         ],
         'grants' => [
             'staff' => ['agency:view', 'unit:view', 'jurisdiction:view'],
