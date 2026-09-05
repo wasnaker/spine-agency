@@ -83,6 +83,29 @@ return [
         ],
     ],
 
+    'settings' => [
+        [
+            'slug'     => 'agency',
+            'label'    => 'Agency',
+            'icon'     => '🏢',
+            'position' => 50,
+            'fields'   => [
+                [
+                    'key'     => 'agency_start_number',
+                    'label'   => 'Start Number',
+                    'type'    => 'number',
+                    'default' => '10101',
+                ],
+                [
+                    'key'     => 'agency_code_length',
+                    'label'   => 'Code Length',
+                    'type'    => 'number',
+                    'default' => '4',
+                ],
+            ],
+        ],
+    ],
+
     'rbac' => [
         'permissions' => [
             'agency:view', 'agency:create', 'agency:edit', 'agency:delete',
