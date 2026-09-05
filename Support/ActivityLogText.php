@@ -29,12 +29,14 @@ class ActivityLogText
     public function render(): string
     {
         $parts = [];
-        foreach ($this->changes as $field => [$old, $new]) {
+        foreach ($this->changes as $field => $change) {
             if ($this->isSensitiveField($field)) {
                 continue;
             }
+            $old = $change['old'] ?? '';
+            $new = $change['new'] ?? '';
             $label = $this->label($field);
-            $parts[] = "{$label}: {$old} → {$new}";
+            $parts[] = "{$label}: {$old} -> {$new}";
         }
         return implode(', ', $parts);
     }
