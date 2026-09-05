@@ -77,6 +77,21 @@ class Agency extends Model
         return $this->belongsTo(Regency::class);
     }
 
+    public static function labels(): array
+    {
+        return [
+            'type'        => 'Tipe',
+            'code'        => 'Kode',
+            'name'        => 'Nama',
+            'email'       => 'Email',
+            'phone'       => 'Telepon',
+            'address'     => 'Alamat',
+            'province_id' => 'Provinsi',
+            'regency_id'  => 'Kota',
+            'is_active'   => 'Aktif',
+        ];
+    }
+
     public function isUnit(): bool
     {
         return $this->type === 'unit';

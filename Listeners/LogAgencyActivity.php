@@ -34,17 +34,19 @@ class LogAgencyActivity
             return;
         }
 
+        $desc = (new \Modules\Agency\Support\ActivityLogText($event->changes, Agency::class))->render();
+
         $this->activityLog->log(
-            "Agency updated: " . $this->label($event->entity),
+            "Agency updated: " . $this->label($event->entity) . " ({$desc})",
             $event->entity,
             $this->user(),
             ['event' => 'updated', 'changes' => $event->changes],
         );
 
-        $status = $event->changes['status'] ?? null;
+        $status = $event->changes['is_active'] ?? null;
         if ($status && $status['old'] !== $status['new']) {
             $this->activityLog->log(
-                "Agency status changed: {$status['old']} -> {$status['new']}",
+                "Agency status changed: " . $this->boolLabel($status['old']) . " -> " . $this->boolLabel($status['new']),
                 $event->entity,
                 $this->user(),
                 ['event' => 'agency.status_changed', 'old' => $status['old'], 'new' => $status['new']],
@@ -66,6 +68,11 @@ class LogAgencyActivity
             null,
             $event->entityType,
         );
+    }
+
+    private function boolLabel(mixed $value): string
+    {
+        return $value ? 'Aktif' : 'Nonaktif';
     }
 
     private function label($entity): string
