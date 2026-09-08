@@ -612,24 +612,18 @@ class AgencyController extends Controller
                 return response()->json(['data' => []]);
             }
 
-            $codes = Agency::where('type', 'unit')
+            $unitIds = Agency::where('type', 'unit')
                 ->where('province_id', $customer->province_id)
                 ->whereHas('jurisdictions', fn ($q) => $q->where('regency_id', $customer->regency_id))
-                ->pluck('code');
+                ->pluck('id');
 
-            if ($codes->isEmpty()) {
+            if ($unitIds->isEmpty()) {
                 return response()->json(['data' => []]);
             }
 
-            // ponytail: user pengawas belum punya FK ke unit; linkage via konvensi
-            // email seeder (pengawas.{code}@ / pengawas-spesialis.{code}@).
-            // Upgrade ke relasi (pivot user_unit) saat ada form kelola pengawas.
-            $query->where(function ($q) use ($codes) {
-                foreach ($codes as $code) {
-                    $q->orWhere('email', 'like', "pengawas.{$code}@%")
-                        ->orWhere('email', 'like', "pengawas-spesialis.{$code}@%");
-                }
-            });
+            // Pengawas = staff unit (agency_staffs.unit_id) yang wilayah kerjanya
+            // mencakup regency customer.
+            $query->whereHas('agencyStaff', fn ($q) => $q->whereIn('unit_id', $unitIds));
         }
 
         $users = $query->with('agencyStaff:id,user_id,realname')
