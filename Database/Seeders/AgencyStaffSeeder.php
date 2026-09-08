@@ -135,6 +135,8 @@ class AgencyStaffSeeder extends Seeder
             if ($s['role']) {
                 $user->assignRole($s['role']);
             }
+            // Default role 'agency' untuk semua staff agency (permission agency:view)
+            $user->assignRole('agency');
 
             $agency = Agency::where('code', $s['agency_code'])->first();
             if (!$agency) {
