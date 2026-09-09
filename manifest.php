@@ -140,7 +140,8 @@ return [
                 'laporan-pjk3:review', 'laporan-pjk3:terima', 'laporan-pjk3:tolak']],
         ],
         'grants' => [
-            'staff' => ['agency:view', 'unit:view', 'jurisdiction:view'],
+            'customer' => ['agency:view'],
+            'surveyor' => ['agency:view'],
         ],
     ],
 ];
