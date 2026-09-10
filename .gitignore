@@ -8,3 +8,6 @@
 .env.backup
 .phpunit.result.cache
 docker-compose.override.yml
+
+# graphify artifact
+graphify-out/
